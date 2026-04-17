@@ -3,66 +3,122 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function createDeal(formData: FormData) {
+async function userOrThrow() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
+  return { supabase, user };
+}
 
+// OPPORTUNITIES
+export async function createOpportunity(formData: FormData) {
+  const { supabase, user } = await userOrThrow();
   const title = String(formData.get("title") ?? "").trim();
   const value = Number(formData.get("value") ?? 0);
-  const contact_name = String(formData.get("contact_name") ?? "").trim();
   const stage_id = String(formData.get("stage_id") ?? "");
+  const person_id = (formData.get("person_id") as string) || null;
+  const company_id = (formData.get("company_id") as string) || null;
   if (!title || !stage_id) throw new Error("Campos obrigatórios faltando");
 
-  await supabase.from("deals").insert({
+  await supabase.from("opportunities").insert({
     title,
     value: isFinite(value) ? value : 0,
-    contact_name: contact_name || null,
     stage_id,
+    person_id,
+    company_id,
     user_id: user.id,
   });
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/opportunities");
 }
 
-export async function moveDeal(dealId: string, stageId: string) {
-  const supabase = await createClient();
-  await supabase.from("deals").update({ stage_id: stageId }).eq("id", dealId);
+export async function moveOpportunity(id: string, stageId: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("opportunities").update({ stage_id: stageId }).eq("id", id);
   revalidatePath("/dashboard");
 }
 
-export async function deleteDeal(dealId: string) {
-  const supabase = await createClient();
-  await supabase.from("deals").delete().eq("id", dealId);
+export async function deleteOpportunity(id: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("opportunities").delete().eq("id", id);
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/opportunities");
 }
 
-export async function createContact(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
-
+// PEOPLE
+export async function createPerson(formData: FormData) {
+  const { supabase, user } = await userOrThrow();
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  const company = String(formData.get("company") ?? "").trim();
+  const job_title = String(formData.get("job_title") ?? "").trim();
+  const company_id = (formData.get("company_id") as string) || null;
   if (!name) throw new Error("Nome obrigatório");
-
-  await supabase.from("contacts").insert({
+  await supabase.from("people").insert({
     name,
     email: email || null,
     phone: phone || null,
-    company: company || null,
+    job_title: job_title || null,
+    company_id,
     user_id: user.id,
   });
-  revalidatePath("/dashboard/contacts");
+  revalidatePath("/dashboard/people");
 }
 
-export async function deleteContact(id: string) {
-  const supabase = await createClient();
-  await supabase.from("contacts").delete().eq("id", id);
-  revalidatePath("/dashboard/contacts");
+export async function deletePerson(id: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("people").delete().eq("id", id);
+  revalidatePath("/dashboard/people");
+}
+
+// COMPANIES
+export async function createCompany(formData: FormData) {
+  const { supabase, user } = await userOrThrow();
+  const name = String(formData.get("name") ?? "").trim();
+  const domain = String(formData.get("domain") ?? "").trim();
+  const industry = String(formData.get("industry") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const employees = Number(formData.get("employees") ?? 0);
+  if (!name) throw new Error("Nome obrigatório");
+  await supabase.from("companies").insert({
+    name,
+    domain: domain || null,
+    industry: industry || null,
+    city: city || null,
+    employees: employees > 0 ? employees : null,
+    user_id: user.id,
+  });
+  revalidatePath("/dashboard/companies");
+}
+
+export async function deleteCompany(id: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("companies").delete().eq("id", id);
+  revalidatePath("/dashboard/companies");
+}
+
+// TASKS
+export async function createTask(formData: FormData) {
+  const { supabase, user } = await userOrThrow();
+  const title = String(formData.get("title") ?? "").trim();
+  const due_date = String(formData.get("due_date") ?? "").trim() || null;
+  if (!title) throw new Error("Título obrigatório");
+  await supabase.from("tasks").insert({
+    title,
+    due_date,
+    user_id: user.id,
+  });
+  revalidatePath("/dashboard/tasks");
+}
+
+export async function toggleTask(id: string, done: boolean) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("tasks").update({ done }).eq("id", id);
+  revalidatePath("/dashboard/tasks");
+}
+
+export async function deleteTask(id: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("tasks").delete().eq("id", id);
+  revalidatePath("/dashboard/tasks");
 }
