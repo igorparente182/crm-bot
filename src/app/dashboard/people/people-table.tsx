@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Mail, Phone } from "lucide-react";
 import { DataTable } from "@/components/data-table";
+import { RecordDrawer } from "@/components/record-drawer";
 import { Input, Label } from "@/components/ui/input";
 import { initials } from "@/lib/utils";
 import { createPerson, deletePerson } from "../actions";
@@ -15,8 +17,11 @@ export function PeopleTable({
   companies: CompanyOpt[];
 }) {
   const compById = new Map(companies.map((c) => [c.id, c.name]));
+  const [active, setActive] = useState<Person | null>(null);
   return (
+    <>
     <DataTable<Person>
+      onRowClick={(r) => setActive(r)}
       title="People"
       rows={rows}
       onDelete={deletePerson}
@@ -118,5 +123,24 @@ export function PeopleTable({
         </>
       }
     />
+    {active && (
+      <RecordDrawer
+        open={!!active}
+        onClose={() => setActive(null)}
+        title={active.name}
+        subtitle={active.job_title ?? undefined}
+        target={{ person_id: active.id }}
+        fields={[
+          { label: "Cargo", value: active.job_title },
+          {
+            label: "Empresa",
+            value: active.company_id ? compById.get(active.company_id) : "",
+          },
+          { label: "E-mail", value: active.email },
+          { label: "Telefone", value: active.phone },
+        ]}
+      />
+    )}
+    </>
   );
 }

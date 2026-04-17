@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { initials } from "@/lib/utils";
+import { CommandPalette, CommandTrigger } from "@/components/command-palette";
 
 const nav = [
   { href: "/dashboard", label: "Pipeline", icon: KanbanSquare },
@@ -42,6 +43,9 @@ export default async function DashboardLayout({
           </span>
           CRM Bot
         </Link>
+        <div className="px-3 pb-3">
+          <CommandTrigger />
+        </div>
         <p className="px-5 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Workspace
         </p>
@@ -76,6 +80,7 @@ export default async function DashboardLayout({
         </div>
       </aside>
       <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      <CommandPalette />
     </div>
   );
 }

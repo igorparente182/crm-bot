@@ -97,6 +97,32 @@ export async function deleteCompany(id: string) {
   revalidatePath("/dashboard/companies");
 }
 
+// NOTES
+type NoteTarget = { opportunity_id?: string; person_id?: string; company_id?: string };
+
+export async function createNote(body: string, target: NoteTarget) {
+  const { supabase, user } = await userOrThrow();
+  const text = body.trim();
+  if (!text) return;
+  await supabase.from("notes").insert({
+    body: text,
+    opportunity_id: target.opportunity_id ?? null,
+    person_id: target.person_id ?? null,
+    company_id: target.company_id ?? null,
+    user_id: user.id,
+  });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/opportunities");
+  revalidatePath("/dashboard/people");
+  revalidatePath("/dashboard/companies");
+}
+
+export async function deleteNote(id: string) {
+  const { supabase } = await userOrThrow();
+  await supabase.from("notes").delete().eq("id", id);
+  revalidatePath("/dashboard");
+}
+
 // TASKS
 export async function createTask(formData: FormData) {
   const { supabase, user } = await userOrThrow();

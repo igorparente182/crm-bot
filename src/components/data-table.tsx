@@ -18,6 +18,7 @@ export function DataTable<T extends { id: string }>({
   onDelete,
   newAction,
   newForm,
+  onRowClick,
   emptyText = "Nenhum registro ainda.",
 }: {
   title: string;
@@ -26,6 +27,7 @@ export function DataTable<T extends { id: string }>({
   onDelete: (id: string) => Promise<void>;
   newAction: (fd: FormData) => Promise<void>;
   newForm: ReactNode;
+  onRowClick?: (row: T) => void;
   emptyText?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -79,7 +81,10 @@ export function DataTable<T extends { id: string }>({
                 {rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="group border-b border-border last:border-0 transition-colors hover:bg-muted/30"
+                    onClick={() => onRowClick?.(row)}
+                    className={`group border-b border-border last:border-0 transition-colors hover:bg-muted/30 ${
+                      onRowClick ? "cursor-pointer" : ""
+                    }`}
                   >
                     {columns.map((c) => (
                       <td
@@ -93,7 +98,10 @@ export function DataTable<T extends { id: string }>({
                     ))}
                     <td className="pr-3">
                       <button
-                        onClick={() => handleDelete(row.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(row.id);
+                        }}
                         disabled={pendingDel === row.id}
                         className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-[hsl(var(--danger))] disabled:opacity-30"
                       >

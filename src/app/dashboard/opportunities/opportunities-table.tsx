@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { DataTable } from "@/components/data-table";
+import { RecordDrawer } from "@/components/record-drawer";
 import { Input, Label } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
 import { createOpportunity, deleteOpportunity } from "../actions";
@@ -20,9 +22,12 @@ export function OpportunitiesTable({
   const stageById = new Map(stages.map((s) => [s.id, s]));
   const peopleById = new Map(people.map((p) => [p.id, p.name]));
   const compById = new Map(companies.map((c) => [c.id, c.name]));
+  const [active, setActive] = useState<Opportunity | null>(null);
 
   return (
+    <>
     <DataTable<Opportunity>
+      onRowClick={(r) => setActive(r)}
       title="Opportunities"
       rows={rows}
       onDelete={deleteOpportunity}
@@ -134,5 +139,44 @@ export function OpportunitiesTable({
         </>
       }
     />
+    {active && (
+      <RecordDrawer
+        open={!!active}
+        onClose={() => setActive(null)}
+        title={active.title}
+        subtitle={
+          active.company_id
+            ? compById.get(active.company_id) ?? undefined
+            : undefined
+        }
+        target={{ opportunity_id: active.id }}
+        fields={[
+          {
+            label: "Valor",
+            value:
+              active.value > 0 ? formatCurrency(active.value) : "",
+          },
+          {
+            label: "Etapa",
+            value: stageById.get(active.stage_id)?.name ?? "",
+          },
+          {
+            label: "Empresa",
+            value: active.company_id ? compById.get(active.company_id) : "",
+          },
+          {
+            label: "Contato",
+            value: active.person_id
+              ? peopleById.get(active.person_id)
+              : active.contact_name,
+          },
+          {
+            label: "Criado",
+            value: new Date(active.created_at).toLocaleDateString("pt-BR"),
+          },
+        ]}
+      />
+    )}
+    </>
   );
 }

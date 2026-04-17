@@ -1,15 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { Building2, Globe } from "lucide-react";
 import { DataTable } from "@/components/data-table";
+import { RecordDrawer } from "@/components/record-drawer";
 import { Input, Label } from "@/components/ui/input";
 import { initials } from "@/lib/utils";
 import { createCompany, deleteCompany } from "../actions";
 import type { Company } from "./page";
 
 export function CompaniesTable({ rows }: { rows: Company[] }) {
+  const [active, setActive] = useState<Company | null>(null);
   return (
+    <>
     <DataTable<Company>
+      onRowClick={(r) => setActive(r)}
       title="Companies"
       rows={rows}
       onDelete={deleteCompany}
@@ -90,5 +95,21 @@ export function CompaniesTable({ rows }: { rows: Company[] }) {
         </>
       }
     />
+    {active && (
+      <RecordDrawer
+        open={!!active}
+        onClose={() => setActive(null)}
+        title={active.name}
+        subtitle={active.domain ?? undefined}
+        target={{ company_id: active.id }}
+        fields={[
+          { label: "Domínio", value: active.domain },
+          { label: "Setor", value: active.industry },
+          { label: "Cidade", value: active.city },
+          { label: "Funcionários", value: active.employees ? String(active.employees) : "" },
+        ]}
+      />
+    )}
+    </>
   );
 }
