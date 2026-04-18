@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState, useTransition, type ReactNode } from "react";
-import { X, StickyNote, Trash2, Send } from "lucide-react";
+import { X, StickyNote, Trash2, Send, Link as LinkIcon, Briefcase, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createNote, deleteNote } from "@/app/dashboard/actions";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/utils";
 
 type Note = {
   id: string;
   body: string;
   created_at: string;
 };
+
+type LinkedOpp = { id: string; title: string; value: number };
+type LinkedPerson = { id: string; name: string; job_title: string | null };
 
 export function RecordDrawer({
   open,
@@ -32,6 +36,8 @@ export function RecordDrawer({
   };
 }) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [linkedOpps, setLinkedOpps] = useState<LinkedOpp[]>([]);
+  const [linkedPeople, setLinkedPeople] = useState<LinkedPerson[]>([]);
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [, startTransition] = useTransition();
@@ -40,7 +46,7 @@ export function RecordDrawer({
     if (!open) return;
     let cancelled = false;
     setLoading(true);
-    const fetch = async () => {
+    const fetchAll = async () => {
       const supabase = createClient();
       let q = supabase
         .from("notes")
@@ -49,13 +55,42 @@ export function RecordDrawer({
       if (target.opportunity_id) q = q.eq("opportunity_id", target.opportunity_id);
       else if (target.person_id) q = q.eq("person_id", target.person_id);
       else if (target.company_id) q = q.eq("company_id", target.company_id);
-      const { data } = await q;
-      if (!cancelled) {
-        setNotes((data ?? []) as Note[]);
-        setLoading(false);
-      }
+      const notesPromise = q;
+
+      const linkedOppsPromise = target.company_id
+        ? supabase
+            .from("opportunities")
+            .select("id,title,value")
+            .eq("company_id", target.company_id)
+            .order("created_at", { ascending: false })
+        : target.person_id
+          ? supabase
+              .from("opportunities")
+              .select("id,title,value")
+              .eq("person_id", target.person_id)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as LinkedOpp[] });
+
+      const linkedPeoplePromise = target.company_id
+        ? supabase
+            .from("people")
+            .select("id,name,job_title")
+            .eq("company_id", target.company_id)
+            .order("name")
+        : Promise.resolve({ data: [] as LinkedPerson[] });
+
+      const [notesRes, oppsRes, peopleRes] = await Promise.all([
+        notesPromise,
+        linkedOppsPromise,
+        linkedPeoplePromise,
+      ]);
+      if (cancelled) return;
+      setNotes((notesRes.data ?? []) as Note[]);
+      setLinkedOpps((oppsRes.data ?? []) as LinkedOpp[]);
+      setLinkedPeople((peopleRes.data ?? []) as LinkedPerson[]);
+      setLoading(false);
     };
-    fetch();
+    fetchAll();
     return () => {
       cancelled = true;
     };
@@ -137,6 +172,58 @@ export function RecordDrawer({
               ))}
             </dl>
           </section>
+
+          {(linkedOpps.length > 0 || linkedPeople.length > 0) && (
+            <section className="border-b border-border p-6">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <LinkIcon className="h-3 w-3" /> Vinculados
+              </h3>
+              {linkedOpps.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Briefcase className="h-3 w-3" /> Oportunidades ({linkedOpps.length})
+                  </p>
+                  <ul className="space-y-1">
+                    {linkedOpps.map((o) => (
+                      <li
+                        key={o.id}
+                        className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <span className="truncate">{o.title}</span>
+                        {o.value > 0 && (
+                          <span className="text-xs font-semibold text-[hsl(var(--success))]">
+                            {formatCurrency(o.value)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {linkedPeople.length > 0 && (
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Users className="h-3 w-3" /> Pessoas ({linkedPeople.length})
+                  </p>
+                  <ul className="space-y-1">
+                    {linkedPeople.map((p) => (
+                      <li
+                        key={p.id}
+                        className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <span className="truncate">{p.name}</span>
+                        {p.job_title && (
+                          <span className="text-xs text-muted-foreground">
+                            {p.job_title}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="p-6">
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
